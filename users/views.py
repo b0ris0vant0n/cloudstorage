@@ -6,11 +6,19 @@ from django.contrib.auth.decorators import login_required
 from .models import UserProfile
 import json
 
+from rest_framework import viewsets, permissions
+from .serializers import UserProfileSerializer
+
+
+class UserProfileViewSet(viewsets.ModelViewSet):
+    queryset = UserProfile.objects.all()
+    serializer_class = UserProfileSerializer
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+
 
 @csrf_exempt
 def register_user(request):
     if request.method == 'POST':
-        # Получаем данные из запроса
         data = json.loads(request.body)
         username = data.get('username')
         password = data.get('password')
@@ -19,7 +27,6 @@ def register_user(request):
         is_admin = data.get('is_admin', False)
         storage_path = data.get('storage_path')
 
-        # Создаем пользователя
         user = User.objects.create_user(username=username, password=password, email=email)
         user_profile = UserProfile.objects.create(user=user, full_name=full_name, is_admin=is_admin, storage_path=storage_path)
 
@@ -48,12 +55,10 @@ def delete_user(request, user_id):
 @csrf_exempt
 def user_login(request):
     if request.method == 'POST':
-        # Получаем данные из запроса
         data = json.loads(request.body)
         username = data.get('username')
         password = data.get('password')
 
-        # Аутентификация пользователя
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
