@@ -32,6 +32,6 @@ class UserProfileAPITestCase(TestCase):
 class UserProfileModelTestCase(TestCase):
     def test_user_profile_creation(self):
         user = User.objects.create_user(username='testuser', password='testpassword')
-        user_profile = UserProfile.objects.create(user=user, full_name='Test User', email='test@example.com')
+        user_profile = UserProfile.objects.register_user(user=user, full_name='Test User', email='test@example.com')
         self.assertEqual(user_profile.full_name, 'Test User')
         self.assertEqual(user_profile.email, 'test@example.com')

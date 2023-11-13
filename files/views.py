@@ -1,7 +1,9 @@
 import json
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.decorators import login_required
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+import uuid
+
 from .models import File, UserProfile
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
@@ -19,8 +21,26 @@ class FileViewSet(viewsets.ModelViewSet):
         serializer.save(user_profile=self.request.user.userprofile)
 
 
-@login_required
-@csrf_exempt
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_files(request):
+    is_admin = request.user.is_staff
+
+    if is_admin and 'user_id' in request.query_params:
+        target_user_id = request.query_params.get('user_id')
+        try:
+            target_user = UserProfile.objects.get(pk=target_user_id)
+            user_files = File.objects.filter(user_profile=target_user)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'error': 'User not found'}, status=404)
+    else:
+        user_files = File.objects.filter(user_profile=request.user.userprofile)
+    serializer = FileSerializer(user_files, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def upload_file(request):
     if request.method == 'POST':
         try:
@@ -29,18 +49,16 @@ def upload_file(request):
             return JsonResponse({'error': 'User profile not found for the current user'}, status=400)
 
         try:
-            data = json.loads(request.body)
+            data = request.data
             name = data.get('name')
-            path = data.get('path')
-            size = data.get('size')
+            size = int(data.get('size'))
             mime_type = data.get('mime_type')
-
             file = File.objects.create(
                 user_profile=user_profile,
                 name=name,
-                path=path,
                 size=size,
-                mime_type=mime_type
+                mime_type=mime_type,
+                storage_path=data.get('path'),
             )
 
             return JsonResponse({'message': 'File uploaded successfully', 'file_id': file.id})
@@ -51,16 +69,9 @@ def upload_file(request):
         return HttpResponseBadRequest('Invalid request method')
 
 
-@login_required
-def get_file_list(request):
-    user_profile = UserProfile.objects.get(user=request.user)
-    files = File.objects.filter(user_profile=user_profile)
-    file_list = [{'name': file.name, 'path': file.path, 'size': file.size, 'mime_type': file.mime_type,
-                  'created_at': file.created_at, 'updated_at': file.updated_at} for file in files]
-    return JsonResponse({'files': file_list})
 
-
-@login_required
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def download_file(request, file_id):
     try:
         file = File.objects.get(pk=file_id)
@@ -74,8 +85,8 @@ def download_file(request, file_id):
         return JsonResponse({'error': 'File not found'})
 
 
-@login_required
-@csrf_exempt
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
 def rename_file(request, file_id):
     try:
         file = File.objects.get(pk=file_id)
@@ -89,7 +100,8 @@ def rename_file(request, file_id):
         return JsonResponse({'error': 'File not found'})
 
 
-@login_required
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
 def delete_file(request, file_id):
     try:
         file = File.objects.get(pk=file_id)

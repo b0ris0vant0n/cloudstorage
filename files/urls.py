@@ -1,10 +1,12 @@
 from django.urls import path
-from . import views
+from .views import *
 
 urlpatterns = [
-    path('upload/', views.upload_file, name='upload_file'),
-    path('download/<int:file_id>/', views.download_file, name='download_file'),
-    path('get-list/', views.get_file_list, name='get_file_list'),
-    path('rename/<int:file_id>/', views.rename_file, name='rename_file'),
-    path('delete/<int:file_id>/', views.delete_file, name='delete_file'),
+    path('upload/', upload_file, name='upload_file'),
+    path('download/<int:file_id>/', download_file, name='download_file'),
+    path('get-list/', get_user_files, name='get_user_files'),
+    path('rename/<int:file_id>/', rename_file, name='rename_file'),
+    path('delete/<int:file_id>/', delete_file, name='delete_file'),
+    path('get-user-files/', get_user_files, name='get_user_files'),
 ]
+

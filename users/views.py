@@ -5,9 +5,19 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from .models import UserProfile
 import json
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.response import Response
+from rest_framework import status
+
 
 from rest_framework import viewsets, permissions
-from .serializers import UserProfileSerializer
+from .serializers import UserProfileSerializer, UserSerializer
+
+from django.shortcuts import render
+from django.urls import reverse_lazy
+from django.contrib.auth.forms import UserCreationForm
+from django.views.generic.edit import CreateView
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
@@ -15,34 +25,37 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
-
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def register_user(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        username = data.get('username')
-        password = data.get('password')
-        full_name = data.get('full_name')
-        email = data.get('email')
-        is_admin = data.get('is_admin', False)
-        storage_path = data.get('storage_path')
+    user_serializer = UserSerializer(data=request.data.get('user'))
+    profile_serializer = UserProfileSerializer(data=request.data)
+    if user_serializer.is_valid() and profile_serializer.is_valid():
+        user = user_serializer.save()
+        profile_serializer.save(user=user)
+        return Response({'message': 'User registered successfully'})
+    return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        user = User.objects.create_user(username=username, password=password, email=email)
-        user_profile = UserProfile.objects.create(user=user, full_name=full_name, is_admin=is_admin, storage_path=storage_path)
+# @api_view(['POST'])
+# @permission_classes([AllowAny])
+# def register_user(request):
+#     serializer = UserProfileSerializer(data=request.data)
+#     if serializer.is_valid():
+#         serializer.save()
+#         return Response({'message': 'User registered successfully'}, status=status.HTTP_201_CREATED)
+#     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        return JsonResponse({'message': 'User registered successfully'})
-    else:
-        return JsonResponse({'error': 'Invalid request method'})
 
-
-@login_required
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
 def get_user_list(request):
     users = UserProfile.objects.all()
     user_list = [{'username': user.user.username, 'full_name': user.full_name, 'email': user.email, 'is_admin': user.is_admin, 'storage_path': user.storage_path} for user in users]
     return JsonResponse({'users': user_list})
 
 
-@login_required
+@api_view(['DELETE'])
+@permission_classes([IsAdminUser])
 def delete_user(request, user_id):
     try:
         user_profile = UserProfile.objects.get(pk=user_id)
@@ -52,12 +65,13 @@ def delete_user(request, user_id):
         return JsonResponse({'error': 'User not found'})
 
 
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def user_login(request):
     if request.method == 'POST':
         data = json.loads(request.body)
-        username = data.get('username')
-        password = data.get('password')
+        username = data.get("username")
+        password = data.get("password")
 
         user = authenticate(request, username=username, password=password)
 
@@ -70,7 +84,8 @@ def user_login(request):
         return JsonResponse({'error': 'Invalid request method'})
 
 
-@login_required
+@api_view(['GET'])
 def user_logout(request):
     logout(request)
     return JsonResponse({'message': 'Logout successful'})
+

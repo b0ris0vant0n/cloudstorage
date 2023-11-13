@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'users',
     'files',
     'rest_framework',
+    'drf_yasg',
 ]
 
 
