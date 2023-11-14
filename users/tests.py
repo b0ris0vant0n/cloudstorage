@@ -1,37 +1,60 @@
 from django.test import TestCase
-from rest_framework.test import APIClient
-from users.models import UserProfile
 from django.contrib.auth.models import User
 from django.urls import reverse
+import json
+
+from users.models import UserProfile
 
 
-class UserProfileAPITestCase(TestCase):
+class UserProfileTestCase(TestCase):
     def setUp(self):
-        self.client = APIClient()
-        self.admin_user = User.objects.create_user(username='adminuser', password='adminpassword', is_staff=True, is_superuser=True)
-        self.client.force_authenticate(user=self.admin_user)
+        self.user = User.objects.create_user(username='testuser', password='testpassword')
+        self.admin_user = User.objects.create_user(username='adminuser', password='adminpassword', is_staff=True)
 
-    def test_get_user_profile_list(self):
-        response = self.client.get('/api/users/userprofiles/')
+    def test_register_user(self):
+        data = {
+            'user': {
+                'username': 'newuser',
+                'password': 'newpassword',
+                'email': 'newuser@example.com'
+            },
+            'full_name': 'New User',
+            'is_admin': False,
+            'storage_path': '/new/path/',
+            "email": "a@gmail.com"
+        }
+        url = reverse('register_user')
+        response = self.client.post(url, data=json.dumps(data), content_type='application/json')
         self.assertEqual(response.status_code, 200)
 
-    def test_create_user_profile(self):
-        user = User.objects.create_user(username='testuser', password='testpassword')
+    def test_get_user_list(self):
+        url = reverse('get_user_list')
+        self.client.force_login(self.admin_user)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
 
-        data = {
-            'user': user.pk,
-            'full_name': 'Test User',
-            'email': 'test@example.com',
-            'storage_path': '/path/to/storage',
-        }
-        response = self.client.post('/api/users/userprofiles/', data, format='json')
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(User.objects.last().userprofile.full_name, 'Test User')
+    def test_delete_user(self):
+        user_to_delete = User.objects.create_user(username='todelete', password='todeletepassword')
+        user_profile_to_delete = UserProfile.objects.create(user=user_to_delete, full_name='Full Name',
+                                                            email='email@example.com', is_admin=False,
+                                                            storage_path='/path/to/storage')
 
+        url = reverse('delete_user', args=[user_profile_to_delete.id])
+        self.client.force_login(self.admin_user)
+        response = self.client.delete(url)
 
-class UserProfileModelTestCase(TestCase):
-    def test_user_profile_creation(self):
-        user = User.objects.create_user(username='testuser', password='testpassword')
-        user_profile = UserProfile.objects.register_user(user=user, full_name='Test User', email='test@example.com')
-        self.assertEqual(user_profile.full_name, 'Test User')
-        self.assertEqual(user_profile.email, 'test@example.com')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['message'], 'User deleted successfully')
+
+    def test_user_login(self):
+        url = reverse('user_login')
+        data = {'username': 'testuser', 'password': 'testpassword'}
+        response = self.client.post(url, json.dumps(data), content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['message'], 'Login successful')
+
+    def test_user_logout(self):
+        url = reverse('user_logout')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['message'], 'Logout successful')
