@@ -109,6 +109,8 @@ def download_file(request, file_id):
         with open(file.storage_path, 'rb') as file_content:
             response = HttpResponse(file_content.read(), content_type=file.mime_type)
         response['Content-Disposition'] = f'attachment; filename="{file.name}"'
+        response['Access-Control-Expose-Headers'] = 'Content-Disposition'
+        print(response['Content-Disposition'])
         return response
     except File.DoesNotExist:
         return JsonResponse({'error': 'File not found'})
