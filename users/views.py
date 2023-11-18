@@ -1,24 +1,22 @@
-from django.contrib.auth.models import User
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from rest_framework_simplejwt.tokens import RefreshToken
 from .models import UserProfile
 import json
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
-
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login
 from rest_framework import viewsets, permissions
 from .serializers import UserProfileSerializer, UserSerializer
+import base64
 
 from cloudstorageserver.logger import setup_logger
 
-from django.shortcuts import render
-from django.urls import reverse_lazy
-from django.contrib.auth.forms import UserCreationForm
-from django.views.generic.edit import CreateView
 
 logger = setup_logger(__name__)
 
@@ -34,10 +32,14 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 @permission_classes([AllowAny])
 def register_user(request):
     try:
-        user_serializer = UserSerializer(data=request.data.get('user'))
+        user_data = request.data.get('user')
+        user_serializer = UserSerializer(data=user_data)
         profile_serializer = UserProfileSerializer(data=request.data)
+
         if user_serializer.is_valid() and profile_serializer.is_valid():
             user = user_serializer.save()
+            user.set_password(user_data['password'])
+            user.save()
             profile_serializer.save(user=user)
             return Response({'message': 'User registered successfully'})
         return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -83,9 +85,21 @@ def user_login(request):
 
         if user is not None:
             login(request, user)
-            return JsonResponse({'message': 'Login successful'})
+            token = RefreshToken.for_user(user)
+            token_value = str(token)
+            credentials = f"{username}:{password}"
+            base64_credentials = base64.b64encode(credentials.encode()).decode("utf-8")
+
+            return JsonResponse({
+                'message': 'Login successful',
+                'isAdmin': user.is_staff,
+                'token': token_value,
+                'authorization': f"Basic {base64_credentials}",
+            })
         else:
+            logger.error(f'Failed login attempt for user: {username}')
             return JsonResponse({'error': 'Invalid credentials'})
+
     else:
         return JsonResponse({'error': 'Invalid request method'})
 

@@ -1,4 +1,6 @@
 import json
+
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -11,6 +13,9 @@ from django.http import HttpResponse
 from rest_framework import viewsets, permissions
 from .serializers import FileSerializer
 from django.http import JsonResponse, HttpResponseBadRequest
+from django.core.files.storage import default_storage
+from django.conf import settings
+import os
 
 
 class FileViewSet(viewsets.ModelViewSet):
@@ -36,6 +41,7 @@ def get_user_files(request):
             except UserProfile.DoesNotExist:
                 return JsonResponse({'error': 'User not found'}, status=404)
         else:
+            print(request.user.userprofile)
             user_files = File.objects.filter(user_profile=request.user.userprofile)
         serializer = FileSerializer(user_files, many=True)
         return Response(serializer.data)
@@ -52,21 +58,34 @@ def upload_file(request):
             return JsonResponse({'error': 'User profile not found for the current user'}, status=400)
 
         try:
-            data = request.data
-            name = data.get('name')
-            size = int(data.get('size'))
-            mime_type = data.get('mime_type')
-            file = File.objects.create(
+            file = request.FILES['file']
+            name = file.name
+            size = file.size
+            mime_type = file.content_type
+
+            # Создаем уникальное имя для файла
+            unique_name = default_storage.get_available_name(name)
+            storage_path = os.path.join(settings.MEDIA_ROOT, unique_name)
+
+            # Сохраняем файл на сервере
+            with default_storage.open(storage_path, 'wb') as destination:
+                for chunk in file.chunks():
+                    destination.write(chunk)
+
+            # Создаем объект File
+            file_object = File.objects.create(
                 user_profile=user_profile,
                 name=name,
                 size=size,
                 mime_type=mime_type,
-                storage_path=data.get('path'),
+                storage_path=storage_path,
             )
-            file.special_link = generate_special_link(file.id)
-            file.save()
 
-            return JsonResponse({'message': 'File uploaded successfully', 'file_id': file.id})
+            # Генерируем специальную ссылку
+            file_object.special_link = generate_special_link(file_object.id)
+            file_object.save()
+
+            return JsonResponse({'message': 'File uploaded successfully', 'file_id': file_object.id})
         except Exception as e:
             print(f"Error in upload_file: {e}")
             return JsonResponse({'error': 'An error occurred while processing the request'}, status=500)
@@ -81,6 +100,7 @@ def generate_special_link(file_id):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@csrf_exempt
 def download_file(request, file_id):
     try:
         file = File.objects.get(pk=file_id)
