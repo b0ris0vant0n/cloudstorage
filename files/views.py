@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 import uuid
 import base64
+from django.core.files import File as DjangoFile
 
 from .models import File, UserProfile
 from django.core.exceptions import PermissionDenied
@@ -64,9 +65,14 @@ def upload_file(request):
             size = file.size
             mime_type = file.content_type
 
+            user_directory = str(request.user.username)
+
+            user_directory_path = default_storage.path(os.path.join('storage', user_directory))
+            os.makedirs(user_directory_path, exist_ok=True)
+
             # Создаем уникальное имя для файла
             unique_name = default_storage.get_available_name(name)
-            storage_path = os.path.join(settings.MEDIA_ROOT, unique_name)
+            storage_path = default_storage.path(os.path.join('storage', user_directory, unique_name))
 
             # Сохраняем файл на сервере
             with default_storage.open(storage_path, 'wb') as destination:
@@ -119,6 +125,8 @@ def download_file(request, file_id):
         return JsonResponse({'error': 'Permission denied'}, status=403)
 
 
+from django.core.exceptions import PermissionDenied
+
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 def rename_file(request, file_id):
@@ -126,10 +134,19 @@ def rename_file(request, file_id):
         file = File.objects.get(pk=file_id)
         data = json.loads(request.body)
         new_name = data.get('new_name')
+
+        user_directory = str(request.user.username)
+
+        new_storage_path = os.path.join('storage', user_directory, new_name)
+
+        with default_storage.open(file.storage_path, 'rb') as old_file:
+            default_storage.save(new_storage_path, DjangoFile(old_file))
+
         file.name = new_name
+        file.storage_path = new_storage_path
         file.save()
 
-        return JsonResponse({'message': 'File renamed successfully'})
+        return JsonResponse({'message': 'File renamed successfully', 'new_path': new_storage_path})
     except File.DoesNotExist:
         return JsonResponse({'error': 'File not found'})
     except PermissionDenied:
@@ -158,6 +175,7 @@ def update_file_comment(request, file_id):
 def delete_file(request, file_id):
     try:
         file = File.objects.get(pk=file_id)
+        default_storage.delete(file.storage_path)
         file.delete()
         return JsonResponse({'message': 'File deleted successfully'})
     except File.DoesNotExist:
