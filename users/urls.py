@@ -11,6 +11,6 @@ urlpatterns = [
     path('users/', get_user_list, name='get_user_list'),
     path('users/<int:user_id>/', delete_user, name='delete_user'),
     path('login/', user_login, name='user_login'),
-    path('logout/', user_logout, name='user_logout'),
+    path('logout', user_logout, name='user_logout'),
     path('', include(router.urls)),
 ]

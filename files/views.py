@@ -29,6 +29,7 @@ class FileViewSet(viewsets.ModelViewSet):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@csrf_exempt
 def get_user_files(request):
     try:
         is_admin = request.user.is_staff

@@ -81,6 +81,10 @@ def user_login(request):
         username = data.get("username")
         password = data.get("password")
 
+        # Check for empty credentials
+        if not username or not password:
+            return JsonResponse({'error': 'Both username and password are required'}, status=400)
+
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
@@ -98,13 +102,14 @@ def user_login(request):
             })
         else:
             logger.error(f'Failed login attempt for user: {username}')
-            return JsonResponse({'error': 'Invalid credentials'})
+            return JsonResponse({'error': 'Неверные логин или пароль'}, status=400)
 
     else:
         return JsonResponse({'error': 'Invalid request method'})
 
 
 @api_view(['GET'])
+@csrf_exempt
 def user_logout(request):
     logout(request)
     return JsonResponse({'message': 'Logout successful'})
