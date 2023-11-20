@@ -6,11 +6,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 import uuid
 import base64
+from django.shortcuts import get_object_or_404
 from django.core.files import File as DjangoFile
 
 from .models import File, UserProfile
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 from rest_framework import viewsets, permissions
 from .serializers import FileSerializer
 from django.http import JsonResponse, HttpResponseBadRequest
@@ -70,16 +71,13 @@ def upload_file(request):
             user_directory_path = default_storage.path(os.path.join('storage', user_directory))
             os.makedirs(user_directory_path, exist_ok=True)
 
-            # Создаем уникальное имя для файла
             unique_name = default_storage.get_available_name(name)
-            storage_path = default_storage.path(os.path.join('storage', user_directory, unique_name))
+            storage_path = default_storage.path(os.path.join(user_directory, unique_name))
 
-            # Сохраняем файл на сервере
             with default_storage.open(storage_path, 'wb') as destination:
                 for chunk in file.chunks():
                     destination.write(chunk)
 
-            # Создаем объект File
             file_object = File.objects.create(
                 user_profile=user_profile,
                 name=name,
@@ -87,9 +85,6 @@ def upload_file(request):
                 mime_type=mime_type,
                 storage_path=storage_path,
             )
-
-            # Генерируем специальную ссылку
-            file_object.special_link = generate_special_link(file_object.id)
             file_object.save()
 
             return JsonResponse({'message': 'File uploaded successfully', 'file_id': file_object.id})
@@ -99,10 +94,20 @@ def upload_file(request):
     else:
         return HttpResponseBadRequest('Invalid request method')
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@csrf_exempt
+def share_file(request, file_id):
+    file_object = get_object_or_404(File, id=file_id)
 
-def generate_special_link(file_id):
-    unique_code = base64.urlsafe_b64encode(uuid.uuid4().bytes).rstrip(b'=').decode('utf-8')
-    return f'/download/{file_id}/{unique_code}/'
+    if request.method == 'POST':
+        unique_code = base64.urlsafe_b64encode(uuid.uuid4().bytes).rstrip(b'=').decode('utf-8')
+        special_link = request.build_absolute_uri(f'/dwnld/{unique_code}')
+        file_object.special_link = special_link
+        file_object.save()
+        return JsonResponse({'special_link': special_link})
+    else:
+        return JsonResponse({'error': 'Invalid request method'})
 
 
 @api_view(['GET'])
@@ -136,11 +141,13 @@ def rename_file(request, file_id):
         new_name = data.get('new_name')
 
         user_directory = str(request.user.username)
+        old_storage_path = file.storage_path
+        new_storage_path = os.path.join(user_directory, new_name)
 
-        new_storage_path = os.path.join('storage', user_directory, new_name)
-
-        with default_storage.open(file.storage_path, 'rb') as old_file:
+        with default_storage.open(old_storage_path, 'rb') as old_file:
             default_storage.save(new_storage_path, DjangoFile(old_file))
+
+        default_storage.delete(old_storage_path)
 
         file.name = new_name
         file.storage_path = new_storage_path
@@ -182,3 +189,18 @@ def delete_file(request, file_id):
         return JsonResponse({'error': 'File not found'})
     except PermissionDenied:
         return JsonResponse({'error': 'Permission denied'}, status=403)
+
+
+@api_view(['GET'])
+def download_sharedfile(request, unique_code):
+    file_object = get_object_or_404(File, special_link=f'http://127.0.0.1:8000/dwnld/{unique_code}')
+    print(file_object)
+    file_path = str(file_object.storage_path)
+    print(file_path)
+    if os.path.exists(file_path):
+        with open(file_path, 'rb') as file:
+            response = HttpResponse(file.read(), content_type='application/octet-stream')
+            response['Content-Disposition'] = f'attachment; filename="{file_object.name}"'
+            return response
+    else:
+        raise Http404

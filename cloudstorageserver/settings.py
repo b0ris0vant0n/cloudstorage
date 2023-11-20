@@ -200,3 +200,5 @@ AUTHENTICATION_BACKENDS = [
 INTERNAL_IPS = [
     '127.0.0.1',
 ]
+
+MEDIA_ROOT='storage/'
