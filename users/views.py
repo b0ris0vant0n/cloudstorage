@@ -99,6 +99,7 @@ def user_login(request):
                 'isAdmin': user.is_staff,
                 'token': token_value,
                 'authorization': f"Basic {base64_credentials}",
+                'currentuser' : username,
             })
         else:
             logger.error(f'Failed login attempt for user: {username}')
