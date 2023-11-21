@@ -1,7 +1,7 @@
 from django.http import JsonResponse, HttpResponse
+import re
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import UserProfile
 import json
@@ -9,7 +9,6 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
-from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from rest_framework import viewsets, permissions
 from .serializers import UserProfileSerializer, UserSerializer
@@ -33,6 +32,19 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 def register_user(request):
     try:
         user_data = request.data.get('user')
+
+        username = user_data.get('username')
+        if not re.match(r'^[a-zA-Z][a-zA-Z0-9]{3,19}$', username):
+            return Response({'error': 'Такой логин не допустим'}, status=status.HTTP_400_BAD_REQUEST)
+
+        email = user_data.get('email')
+        if not re.match(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$', email):
+            return Response({'error': 'Неверно указан email'}, status=status.HTTP_400_BAD_REQUEST)
+
+        password = user_data.get('password')
+        if not re.match(r'^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$', password):
+            return Response({'error': 'Неверно указан пароль'}, status=status.HTTP_400_BAD_REQUEST)
+
         user_serializer = UserSerializer(data=user_data)
         profile_serializer = UserProfileSerializer(data=request.data)
 
