@@ -127,3 +127,17 @@ def user_login(request):
 def user_logout(request):
     logout(request)
     return JsonResponse({'message': 'Logout successful'})
+
+
+@permission_classes([IsAdminUser])
+@api_view(['PATCH'])
+@csrf_exempt
+def user_status_admin(request, user_id):
+    try:
+        user_profile = UserProfile.objects.get(pk=user_id)
+        user_profile.is_admin = not user_profile.is_admin
+        user_profile.save()
+
+        return JsonResponse({'message': 'User status updated successfully'})
+    except UserProfile.DoesNotExist:
+        return JsonResponse({'error': 'User not found'})

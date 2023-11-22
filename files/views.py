@@ -39,16 +39,17 @@ def get_user_files(request):
             target_user_id = request.query_params.get('user_id')
             try:
                 target_user = UserProfile.objects.get(pk=target_user_id)
-                user_files = File.objects.filter(userprofile=target_user)
+                user_files = File.objects.filter(user_profile=target_user)
             except UserProfile.DoesNotExist:
                 return JsonResponse({'error': 'User not found'}, status=404)
         else:
-            print(request.user.userprofile)
             user_files = File.objects.filter(user_profile=request.user.userprofile)
+
         serializer = FileSerializer(user_files, many=True)
         return Response(serializer.data)
     except PermissionDenied:
         return JsonResponse({'error': 'Permission denied'}, status=403)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -65,9 +66,9 @@ def upload_file(request):
             size = file.size
             mime_type = file.content_type
 
-            user_directory = str(request.user.username)
+            user_directory = user_profile.storage_path
 
-            user_directory_path = default_storage.path(os.path.join('storage', user_directory))
+            user_directory_path = default_storage.path(os.path.join(user_directory))
             os.makedirs(user_directory_path, exist_ok=True)
 
             unique_name = default_storage.get_available_name(name)
