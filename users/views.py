@@ -61,12 +61,13 @@ def register_user(request):
 
 
 @api_view(['GET'])
+@csrf_exempt
 @permission_classes([IsAdminUser])
 def get_user_list(request):
     try:
         users = UserProfile.objects.all()
         user_list = [
-            {'username': user.user.username, 'full_name': user.full_name, 'email': user.email, 'is_admin': user.is_admin,
+            {'id': user.id, 'username': user.user.username, 'full_name': user.full_name, 'email': user.email, 'is_admin': user.is_admin,
              'storage_path': user.storage_path} for user in users]
         return JsonResponse({'users': user_list})
     except Exception as e:
@@ -75,6 +76,7 @@ def get_user_list(request):
 
 @api_view(['DELETE'])
 @permission_classes([IsAdminUser])
+@csrf_exempt
 def delete_user(request, user_id):
     try:
         user_profile = UserProfile.objects.get(pk=user_id)
@@ -93,7 +95,6 @@ def user_login(request):
         username = data.get("username")
         password = data.get("password")
 
-        # Check for empty credentials
         if not username or not password:
             return JsonResponse({'error': 'Both username and password are required'}, status=400)
 

@@ -10,7 +10,6 @@ from django.shortcuts import get_object_or_404
 from django.core.files import File as DjangoFile
 
 from .models import File, UserProfile
-from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, Http404
 from rest_framework import viewsets, permissions
 from .serializers import FileSerializer
