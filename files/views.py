@@ -40,7 +40,7 @@ def get_user_files(request):
             target_user_id = request.query_params.get('user_id')
             try:
                 target_user = UserProfile.objects.get(pk=target_user_id)
-                user_files = File.objects.filter(user_profile=target_user)
+                user_files = File.objects.filter(userprofile=target_user)
             except UserProfile.DoesNotExist:
                 return JsonResponse({'error': 'User not found'}, status=404)
         else:
