@@ -193,7 +193,7 @@ def delete_file(request, file_id):
 
 @api_view(['GET'])
 def download_sharedfile(request, unique_code):
-    file_object = get_object_or_404(File, special_link=f'http://127.0.0.1:8000/dwnld/{unique_code}')
+    file_object = get_object_or_404(File, special_link=f'http://89.104.68.22/dwnld/{unique_code}')
     print(file_object)
     file_path = str(file_object.storage_path)
     print(file_path)
