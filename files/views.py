@@ -140,7 +140,7 @@ def rename_file(request, file_id):
         data = json.loads(request.body)
         new_name = data.get('new_name')
 
-        user_directory = str(request.user.username)
+        user_directory = os.path.dirname(file.storage_path)
         old_storage_path = file.storage_path
         new_storage_path = os.path.join(user_directory, new_name)
 
