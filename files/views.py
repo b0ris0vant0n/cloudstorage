@@ -194,14 +194,12 @@ def delete_file(request, file_id):
 @api_view(['GET'])
 def download_sharedfile(request, unique_code):
     file_object = get_object_or_404(File, special_link=f'http://89.104.68.22/dwnld/{unique_code}')
-    print(file_object)
     file_path = str(file_object.storage_path)
-    print(file_path)
     if os.path.exists(file_path):
         with open(file_path, 'rb') as file:
             response = HttpResponse(file.read(), content_type='application/octet-stream')
             filename = os.path.basename(file_object.name)
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response['Content-Disposition'] = f'attachment; filename={filename.encode("utf-8").decode("latin-1")}'
             response['Access-Control-Allow-Origin'] = 'http://89.104.68.22:3000'
             response['Access-Control-Allow-Methods'] = 'GET'
             return response
