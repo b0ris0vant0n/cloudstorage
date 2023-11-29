@@ -200,7 +200,10 @@ def download_sharedfile(request, unique_code):
     if os.path.exists(file_path):
         with open(file_path, 'rb') as file:
             response = HttpResponse(file.read(), content_type='application/octet-stream')
-            response['Content-Disposition'] = f'attachment; filename="{file_object.name}"'
+            filename = os.path.basename(file_object.name)
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response['Access-Control-Allow-Origin'] = 'http://89.104.68.22:3000'
+            response['Access-Control-Allow-Methods'] = 'GET'
             return response
     else:
         raise Http404
