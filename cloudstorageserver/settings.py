@@ -161,6 +161,7 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://89.104.68.22:3000",
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
