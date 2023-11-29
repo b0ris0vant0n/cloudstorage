@@ -28,7 +28,7 @@ SECRET_KEY = 'django-insecure-j$07mx1d-6lwqe&@#mmk3u03-%bj$f+ng8cdef6a-#(t00r-&@
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['89.104.68.22', 'localhost', '127.0.0.1']
 
 
 # Application definition
@@ -104,9 +104,9 @@ LOGGING = {
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'myserver',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
+        'NAME': 'storage',
+        'USER': 'anton',
+        'PASSWORD': 'Bab171001',
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -137,7 +137,6 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/4.1/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
 
 USE_I18N = True
@@ -149,14 +148,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-
 
 
 CORS_ALLOWED_ORIGINS = [
